@@ -1,0 +1,204 @@
+@import 'tailwindcss';
+
+/* ---------------------------------------------------------------------------
+   Identité Proches
+
+   Palette chaude et calme — un outil qu'on ouvre parce qu'un parent vieillit
+   n'a pas à être froid, ni à crier. Tous les couples texte/fond ci-dessous
+   passent AA (≥ 4,5:1), et l'encre sur l'ivoire atteint 15:1, ce qui est le
+   minimum acceptable pour la vue lue par la personne accompagnée.
+
+   Pas de thème sombre : la garantie de contraste ne vaut que si elle est tenue
+   partout, et le seul écran qui compte vraiment ici est une tablette posée sur
+   une table, en plein jour.
+--------------------------------------------------------------------------- */
+
+:root {
+  --c-fond: #faf7f2;
+  --c-surface: #ffffff;
+  --c-surface-2: #f2ede4;
+  --c-bordure: #e2d9cb;
+  --c-encre: #221e1a;
+  --c-doux: #5f564c;
+
+  --c-terre: #a8452a;
+  --c-terre-clair: #f6e5de;
+  --c-sauge: #3f6b52;
+  --c-sauge-clair: #e1ede5;
+  --c-ambre: #8a5a00;
+  --c-ambre-clair: #f8ecd5;
+  --c-alerte: #a32a1c;
+  --c-alerte-clair: #f8e2de;
+}
+
+@theme inline {
+  --color-fond: var(--c-fond);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-bordure: var(--c-bordure);
+  --color-encre: var(--c-encre);
+  --color-doux: var(--c-doux);
+  --color-terre: var(--c-terre);
+  --color-terre-clair: var(--c-terre-clair);
+  --color-sauge: var(--c-sauge);
+  --color-sauge-clair: var(--c-sauge-clair);
+  --color-ambre: var(--c-ambre);
+  --color-ambre-clair: var(--c-ambre-clair);
+  --color-alerte: var(--c-alerte);
+  --color-alerte-clair: var(--c-alerte-clair);
+
+  /* Police servie par le système : aucune requête vers un CDN — rien à
+     charger, et aucun tiers qui voie passer les visites. */
+  --font-sans:
+    ui-rounded, 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--c-bordure);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--c-fond);
+    color: var(--c-encre);
+    font-family: var(--font-sans);
+  }
+
+  /* Anneau de focus visible partout : la navigation au clavier est le seul
+     recours de qui ne vise pas bien à la souris. */
+  :focus-visible {
+    outline: 3px solid var(--c-terre);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .carte {
+    background: var(--c-surface);
+    border: 1px solid var(--c-bordure);
+    border-radius: var(--radius-xl);
+  }
+
+  .bouton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    /* 44 px : la cible tactile minimale recommandée, tenue même sur les
+       boutons secondaires — un doigt tremblant ne vise pas à 32 px. */
+    min-height: 2.75rem;
+    padding: 0.5rem 1.125rem;
+    border-radius: 999px;
+    font-weight: 600;
+    background: var(--c-terre);
+    color: #fff;
+    transition: filter 120ms ease;
+  }
+
+  .bouton:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .bouton:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .bouton-doux {
+    background: var(--c-surface);
+    color: var(--c-encre);
+    border: 1px solid var(--c-bordure);
+  }
+
+  .bouton-doux:hover:not(:disabled) {
+    background: var(--c-surface-2);
+    filter: none;
+  }
+
+  .bouton-discret {
+    background: transparent;
+    color: var(--c-doux);
+    border: none;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 500;
+  }
+
+  .bouton-discret:hover:not(:disabled) {
+    color: var(--c-encre);
+    background: var(--c-surface-2);
+    filter: none;
+  }
+
+  .champ {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--c-surface);
+    border: 1px solid var(--c-bordure);
+    border-radius: var(--radius-lg);
+    color: var(--c-encre);
+  }
+
+  .champ::placeholder {
+    color: var(--c-doux);
+  }
+
+  .libelle {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--c-doux);
+    margin-bottom: 0.25rem;
+  }
+
+  /* Pastille de catégorie ou d'état. La couleur ne porte jamais l'information
+     seule : le libellé est toujours écrit à côté. */
+  .puce {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .lien {
+    color: var(--c-terre);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  /* Vue de la personne accompagnée : tout part de 24 px, et les tailles
+     Tailwind classiques restent utilisables par-dessus. */
+  .vue-senior {
+    font-size: 1.5rem;
+    line-height: 1.6;
+  }
+
+  .vue-senior .champ,
+  .vue-senior .bouton {
+    min-height: 3.5rem;
+    font-size: 1.25rem;
+  }
+}

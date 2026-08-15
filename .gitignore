@@ -1,0 +1,19 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# Recopié depuis pdfjs-dist par scripts/pdfjs-assets.mjs, avant chaque
+# `dev` et chaque `build`. C'est une copie, pas une source.
+public/pdfjs/
+
+# Repli de stockage quand aucun bucket n'est configuré (voir stockage.ts).
+# Ce sont de VRAIS documents — ordonnances, avis d'imposition. Ils n'ont
+# jamais à entrer dans le dépôt.
+.data/
+
+.env
+.env.local
+.env*.local
+
+.DS_Store
