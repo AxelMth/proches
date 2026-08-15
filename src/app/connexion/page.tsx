@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Marque } from '@/components/Marque';
+import { cheminInterne } from '@/server/redirection';
 import { membreConnecte } from '@/server/session';
 import { FormulaireConnexion } from './FormulaireConnexion';
 
@@ -16,9 +17,10 @@ export default async function PageConnexion({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
-  const suite = typeof params.suite === 'string' && params.suite.startsWith('/')
-    ? params.suite
-    : undefined;
+  // Normalisé ici, avant d'être recopié en champ caché du formulaire : ce qui
+  // ressort de `cheminInterne` est sûr, un `startsWith('/')` ne l'était pas.
+  const destination = typeof params.suite === 'string' ? cheminInterne(params.suite) : '/';
+  const suite = destination === '/' ? undefined : destination;
 
   if (await membreConnecte()) redirect(suite ?? '/');
 

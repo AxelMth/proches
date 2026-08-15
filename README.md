@@ -146,9 +146,10 @@ production par le `release_command`.
 **Les vignettes de PDF sont peintes par pdf.js, pas par un `<iframe>`.** L'iframe
 s'appuie sur le lecteur intégré du navigateur, qui n'est pas garanti : là où il
 manque, l'aperçu devient un rectangle noir. `VignettePdf` décode la première
-page et la peint dans un canevas. Les ~350 ko de pdf.js ne sont jamais dans le
-paquet initial — le module n'est importé que lorsqu'une vignette de PDF entre
-dans le champ de vision. Deux jeux de ressources qu'il va chercher par HTTP sont
+page et la peint dans un canevas. Les 1,7 Mo de pdf.js (490 ko d'API plus 1,2 Mo
+de worker, soit ~520 ko compressés) ne sont jamais dans le paquet initial — ni
+le module ni son worker ne sont chargés avant qu'une vignette de PDF entre dans
+le champ de vision. Deux jeux de ressources qu'il va chercher par HTTP sont
 recopiés sous `public/pdfjs/` par `scripts/pdfjs-assets.mjs`, avant chaque `dev`
 et chaque `build` : les polices standard (sans elles, un PDF qui n'embarque pas
 Helvetica se peint blanc) et les décodeurs JBIG2 et JPEG 2000, c'est-à-dire ce
@@ -176,7 +177,7 @@ sortie, il aurait suffi de pilonner l'adresse d'un aidant pour lui couper
 l'accès.
 
 L'empreinte est un `scrypt` de `node:crypto` — pas d'argon2 ni de bcrypt, qui
-imposeraient une dépendance native à un projet qui en compte cinq. Le coût est
+imposeraient une dépendance native à un projet qui en compte sept. Le coût est
 réglé à N = 2^15 et non au 2^17 que recommande l'OWASP : `scrypt` réserve
 `128 · N · r` octets par calcul, soit 128 Mo à 2^17, sur une machine Fly qui en
 a 512 en tout. Le format stocké porte ses paramètres (`scrypt$N$r$p$sel$…`), si

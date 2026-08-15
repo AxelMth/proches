@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { envoyerLienConnexion } from '@/server/courriel';
 import { consommerLien, creerLienConnexion, etatLien, origine } from '@/server/liens';
+import { cheminInterne } from '@/server/redirection';
 import { ouvrirSession } from '@/server/session';
 import { membreParId } from '@/server/store';
 
@@ -27,8 +28,9 @@ export async function confirmerConnexion(donnees: FormData): Promise<void> {
   await ouvrirSession(membre.id);
 
   // Seul un chemin interne est accepté : sans ce filtre, un lien envoyé par
-  // courriel deviendrait une redirection ouverte.
-  redirect(suite.startsWith('/') && !suite.startsWith('//') ? suite : '/');
+  // courriel deviendrait une redirection ouverte. Voir `cheminInterne`, qui
+  // s'appuie sur le parseur d'URL — un test de préfixe laisse passer `/\`.
+  redirect(cheminInterne(suite));
 }
 
 export interface EtatRenvoi {

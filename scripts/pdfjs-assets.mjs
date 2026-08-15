@@ -20,7 +20,7 @@
 // le navigateur à l'ouverture de la page : pdf.js ne demande une police ou un
 // décodeur qu'au moment précis où un document en réclame un.
 
-import { cp, mkdir, stat } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,6 +39,11 @@ async function existe(chemin) {
   }
 }
 
+// Créé avant tout le reste, y compris avant d'abandonner faute de pdfjs-dist :
+// le Dockerfile fait `COPY /app/public ./public`, et un `public/` absent ferait
+// échouer le build entier — pour une commodité d'affichage.
+await mkdir(cible, { recursive: true });
+
 if (!(await existe(source))) {
   // Pas une erreur : `pnpm install` n'a peut-être pas encore tourné. Échouer
   // ici casserait un `pnpm dev` qui, sans vignette de PDF, marcherait très
@@ -47,9 +52,22 @@ if (!(await existe(source))) {
   process.exit(0);
 }
 
-await mkdir(cible, { recursive: true });
+/**
+ * La version de pdfjs-dist sert de sceau, et il n'est posé qu'une fois les
+ * deux dossiers ENTIÈREMENT recopiés.
+ *
+ * Comparer les dates de modification ne marchait pas : la mtime d'un dossier
+ * remonte dès qu'on y crée une entrée, si bien qu'une copie interrompue
+ * laissait un dossier partiel *plus récent* que sa source — donc considéré à
+ * jour pour toujours, et expédié tel quel en production. Une copie interrompue
+ * ne laisse aucun sceau, et le passage suivant repart de zéro.
+ */
+const { version } = JSON.parse(await readFile(path.join(source, 'package.json'), 'utf8'));
+const sceau = path.join(cible, '.version');
+const pose = await readFile(sceau, 'utf8').catch(() => null);
 
-let recopies = 0;
+if (pose === version) process.exit(0);
+
 for (const dossier of DOSSIERS) {
   const depuis = path.join(source, dossier);
   const vers = path.join(cible, dossier);
@@ -59,18 +77,11 @@ for (const dossier of DOSSIERS) {
     continue;
   }
 
-  // `force: false` ne suffirait pas à détecter une mise à jour de pdfjs-dist :
-  // on compare les dates, et on recopie tout dès que la source est plus
-  // récente. Un dossier de moins d'un mégaoctet, la copie coûte quelques
-  // millisecondes.
-  const [dateSource, dateCible] = await Promise.all([
-    stat(depuis).then((s) => s.mtimeMs),
-    stat(vers).then((s) => s.mtimeMs, () => 0),
-  ]);
-  if (dateCible >= dateSource) continue;
-
+  // On efface avant de recopier : sans cela, les restes d'une version
+  // précédente survivraient à côté des nouveaux fichiers.
+  await rm(vers, { recursive: true, force: true });
   await cp(depuis, vers, { recursive: true });
-  recopies += 1;
 }
 
-if (recopies > 0) console.log(`[pdfjs] ${recopies} dossier(s) recopié(s) sous public/pdfjs/.`);
+await writeFile(sceau, version);
+console.log(`[pdfjs] ressources de pdfjs-dist ${version} recopiées sous public/pdfjs/.`);

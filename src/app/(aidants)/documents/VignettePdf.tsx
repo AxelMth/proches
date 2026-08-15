@@ -14,11 +14,14 @@ import { useEffect, useRef, useState } from 'react';
  *
  * ## Ce que ça coûte, et comment on ne le paie pas
  *
- * pdf.js pèse ~350 ko. Il n'est donc **jamais** dans le paquet initial : le
- * module n'est importé qu'au moment où une vignette entre dans le champ de
- * vision (`IntersectionObserver`). Ouvrir la page en vue « liste » ou « cartes »,
- * ou n'avoir que des images, ne le charge pas du tout ; le charger une fois
- * sert ensuite toutes les vignettes de la page.
+ * pdf.js pèse 1,7 Mo au total — 490 ko d'API et 1,2 Mo de worker, soit environ
+ * 520 ko une fois compressés sur le réseau. C'est beaucoup, et c'est
+ * précisément pourquoi rien de tout cela n'est **jamais** dans le paquet
+ * initial : le module n'est importé qu'au moment où une vignette entre dans le
+ * champ de vision (`IntersectionObserver`), et le worker n'est créé qu'ensuite.
+ * Ouvrir la page en vue « liste » ou « cartes », ou n'avoir que des images, ne
+ * charge rien du tout ; le charger une fois sert ensuite toutes les vignettes
+ * de la page.
  *
  * C'est la version `legacy` qui est importée : la version courante suppose
  * `Promise.withResolvers`, absent de Safari avant 17.4 — soit exactement le
@@ -59,6 +62,12 @@ export function VignettePdf({
     const dessiner = async (): Promise<void> => {
       try {
         const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+        // Le chunk de pdf.js pèse près d'un demi-mégaoctet : on a largement le
+        // temps de quitter la page pendant son chargement. Sans ce retour, le
+        // worker et le téléchargement du PDF étaient lancés APRÈS le démontage,
+        // et le nettoyage — déjà passé — ne pouvait plus rien détruire.
+        if (annule) return;
 
         // Le worker est servi depuis notre propre origine — aucune requête
         // vers un CDN, ici comme partout ailleurs dans ce projet. Webpack le
@@ -116,6 +125,16 @@ export function VignettePdf({
         if (!annule) setEtat('rendu');
       } catch {
         if (!annule) setEtat('echec');
+      } finally {
+        // Les pixels sont dans le canevas : le document décodé et son worker
+        // n'ont plus rien à faire. Sans cela, chaque vignette laissait un
+        // worker dédié ouvert jusqu'à la navigation suivante — une page de
+        // documents en montre douze.
+        //
+        // Remis à `null` pour que le nettoyage ne détruise pas deux fois.
+        const finie = tache;
+        tache = null;
+        void finie?.destroy();
       }
     };
 

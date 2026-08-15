@@ -10,7 +10,7 @@ import crypto from 'node:crypto';
  * lourde, et une chose de plus à réparer le jour où Node change de version.
  * `scrypt` est dans la bibliothèque standard de Node, il est conçu pour cet
  * usage précis, et il est recommandé par l'OWASP au même titre que les deux
- * autres. Sur un projet sans ORM et à cinq dépendances, c'est le bon compromis.
+ * autres. Sur un projet sans ORM et à sept dépendances, c'est le bon compromis.
  *
  * ## Le format stocké
  *

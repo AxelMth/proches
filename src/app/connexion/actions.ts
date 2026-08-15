@@ -10,14 +10,14 @@ import {
   hacher,
   verifier,
 } from '@/server/motdepasse';
+import { cheminInterne } from '@/server/redirection';
 import { ouvrirSession } from '@/server/session';
 import {
   definirMotDePasse,
   empreinteMotDePasse,
-  essaiBloqueJusqu,
   membreParEmail,
-  noterEchec,
   oublierEchecs,
+  reserverEssai,
 } from '@/server/store';
 
 export interface EtatConnexion {
@@ -25,8 +25,19 @@ export interface EtatConnexion {
   message?: string;
 }
 
+/**
+ * 254 octets, le maximum d'une adresse selon la RFC 5321.
+ *
+ * Ce n'est pas un raffinement : l'adresse sert de clé primaire à
+ * `essai_connexion`, et un index btree de Postgres refuse une valeur de plus
+ * de ~2 700 octets. Sans cette borne, une adresse absurdement longue —
+ * syntaxiquement valide pour zod — faisait échouer l'insertion en 54000 et
+ * répondre 500, là où tous les autres cas renvoient le même message neutre.
+ */
+const LONGUEUR_MAX_EMAIL = 254;
+
 const schema = z.object({
-  email: z.string().trim().email(),
+  email: z.string().trim().email().max(LONGUEUR_MAX_EMAIL),
   // `.nullish()` et pas `.optional()` : un champ absent du formulaire ressort
   // de `FormData.get` en `null`, que `.optional()` refuse — et l'échec se
   // serait présenté à l'utilisateur comme une adresse invalide.
@@ -65,9 +76,8 @@ export async function demanderLien(
     const url = new URL(`/connexion/${jeton}`, origine());
     // Seul un chemin interne est accepté comme destination : sans ce filtre,
     // le lien envoyé par courriel deviendrait une redirection ouverte.
-    if (suite?.startsWith('/') && !suite.startsWith('//')) {
-      url.searchParams.set('suite', suite);
-    }
+    const destination = cheminInterne(suite);
+    if (destination !== '/') url.searchParams.set('suite', destination);
 
     const envoi = await envoyerLienConnexion(membre.email, membre.prenom, url.toString());
     if (!envoi.ok) {
@@ -97,7 +107,7 @@ function delai(jusqu: Date): string {
 }
 
 const schemaMotDePasse = z.object({
-  email: z.string().trim().email(),
+  email: z.string().trim().email().max(LONGUEUR_MAX_EMAIL),
   motDePasse: z.string().min(1),
   suite: z.string().nullish(),
 });
@@ -136,7 +146,11 @@ export async function connecterAvecMotDePasse(
 
   const { email, motDePasse, suite } = analyse.data;
 
-  const bloqueJusqu = await essaiBloqueJusqu(email);
+  // L'essai est décompté AVANT le scrypt, pas après : c'est l'écriture qui
+  // sert de garde, sinon cent requêtes simultanées passent toutes pendant les
+  // dizaines de millisecondes du hachage. Une connexion réussie efface aussitôt
+  // le compteur, ce qui rend l'avance sans effet pour qui connaît son mot de passe.
+  const bloqueJusqu = await reserverEssai(email);
   if (bloqueJusqu) {
     return {
       statut: 'erreur',
@@ -150,7 +164,6 @@ export async function connecterAvecMotDePasse(
   const bon = await verifier(motDePasse, compte?.empreinte ?? (await empreinteLeurre()));
 
   if (!compte || !bon) {
-    await noterEchec(email);
     return { statut: 'erreur', message: 'Adresse ou mot de passe incorrect.' };
   }
 
@@ -164,7 +177,8 @@ export async function connecterAvecMotDePasse(
 
   await ouvrirSession(compte.membreId);
 
-  // Même filtre que sur le lien magique : seul un chemin interne est accepté,
-  // sinon le champ caché `suite` devient une redirection ouverte.
-  redirect(suite?.startsWith('/') && !suite.startsWith('//') ? suite : '/');
+  // `cheminInterne` et pas un test de préfixe : le champ caché `suite` vient de
+  // l'URL, et `/\exemple.fr` passerait un `startsWith('/')` pour finir résolu
+  // en `https://exemple.fr/` par le navigateur.
+  redirect(cheminInterne(suite));
 }

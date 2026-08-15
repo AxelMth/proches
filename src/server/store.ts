@@ -752,25 +752,29 @@ const SEUIL = 5;
 const PALIER_S = 30;
 const PLAFOND_S = 15 * 60;
 
-export async function essaiBloqueJusqu(cle: string): Promise<Date | null> {
-  const ligne = await q1<{ bloque_jusqu: Date | null }>(
-    'select bloque_jusqu from essai_connexion where cle = $1',
-    [cle.toLowerCase()],
-  );
-  const jusqu = ligne?.bloque_jusqu ?? null;
-  return jusqu && jusqu > new Date() ? jusqu : null;
-}
-
 /**
- * Compte un échec et pose le blocage s'il y a lieu, en une seule requête —
- * deux essais concurrents ne peuvent donc pas s'écraser l'un l'autre.
+ * Réserve un essai, et dit s'il faut refuser.
+ *
+ * **C'est l'écriture qui fait office de garde, et c'est tout l'intérêt.** La
+ * version précédente lisait le blocage, puis comptait l'échec après coup —
+ * or entre les deux il y a un scrypt de plusieurs dizaines de millisecondes.
+ * Cent requêtes lancées ensemble lisaient donc toutes « pas de blocage » avant
+ * que la première n'ait rien écrit, et passaient toutes : le freinage ne
+ * freinait que les attaques séquentielles, c'est-à-dire les seules qu'on ne
+ * craint pas. Ici l'incrément et la lecture sont la même instruction, et
+ * `on conflict do update` prend le verrou de ligne — cent requêtes s'entre-
+ * suivent et la cinquième ferme la porte aux suivantes.
  *
  * Le compteur repart de zéro après une heure sans le moindre essai : sans quoi
  * quatre fautes de frappe étalées sur un an finiraient par bloquer quelqu'un
  * qui n'a rien fait de mal.
+ *
+ * Renvoie l'échéance du blocage s'il était **déjà** atteint en arrivant, `null`
+ * s'il faut poursuivre la vérification. L'essai qui pose le blocage est encore
+ * honoré : on tolère `SEUIL` essais, le suivant est refusé.
  */
-export async function noterEchec(cle: string): Promise<void> {
-  await exec(
+export async function reserverEssai(cle: string): Promise<Date | null> {
+  const ligne = await q1<{ echecs: number; bloque_jusqu: Date | null }>(
     `insert into essai_connexion (cle, echecs, maj_le) values ($1, 1, now())
      on conflict (cle) do update
         set echecs = case when essai_connexion.maj_le < now() - interval '1 hour'
@@ -784,13 +788,17 @@ export async function noterEchec(cle: string): Promise<void> {
                                          then 1 else essai_connexion.echecs + 1 end) - $2),
                      $4
                    ) * interval '1 second'
-              else null end`,
+              else null end
+     returning echecs, bloque_jusqu`,
     [cle.toLowerCase(), SEUIL, PALIER_S, PLAFOND_S],
   );
 
   // Ménage opportuniste : la table ne sert qu'à freiner, une journée de
   // mémoire suffit largement.
   await exec("delete from essai_connexion where maj_le < now() - interval '1 day'");
+
+  if (!ligne || ligne.echecs <= SEUIL) return null;
+  return ligne.bloque_jusqu && ligne.bloque_jusqu > new Date() ? ligne.bloque_jusqu : null;
 }
 
 export async function oublierEchecs(cle: string): Promise<void> {

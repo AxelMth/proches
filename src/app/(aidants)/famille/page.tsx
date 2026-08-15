@@ -5,13 +5,11 @@ import { contexteAidant, sessionCouranteId } from '@/server/session';
 import { dateMotDePasse, membres as listerMembres, sessionsDe } from '@/server/store';
 import { BoutonRenvoyer } from './BoutonRenvoyer';
 import { FormulaireInvitation } from './FormulaireInvitation';
-import { FormulaireMotDePasse } from './FormulaireMotDePasse';
 import {
-  fermerAppareil,
-  regenererLienVue,
-  retirerMembre,
-  supprimerMotDePasse,
-} from './actions';
+  FormulaireMotDePasse,
+  FormulaireSuppressionMotDePasse,
+} from './FormulaireMotDePasse';
+import { fermerAppareil, regenererLienVue, retirerMembre } from './actions';
 
 export const metadata = { title: 'Famille' };
 export const dynamic = 'force-dynamic';
@@ -139,13 +137,7 @@ export default async function PageFamille() {
           longueurMinimale={LONGUEUR_MINIMALE}
         />
 
-        {motDePasseLe ? (
-          <form action={supprimerMotDePasse} className="mt-2 border-t pt-2">
-            <button type="submit" className="bouton bouton-discret text-alerte">
-              Supprimer mon mot de passe
-            </button>
-          </form>
-        ) : null}
+        {motDePasseLe ? <FormulaireSuppressionMotDePasse /> : null}
       </section>
 
       <section className="carte p-4">

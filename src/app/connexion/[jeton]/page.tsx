@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Marque } from '@/components/Marque';
 import { etatLien } from '@/server/liens';
+import { cheminInterne } from '@/server/redirection';
 import { membreParId } from '@/server/store';
 import { BoutonRenvoi } from './BoutonRenvoi';
 import { confirmerConnexion } from './actions';
@@ -27,7 +28,9 @@ export default async function PageLienConnexion({
 }) {
   const { jeton } = await params;
   const sp = await searchParams;
-  const suite = typeof sp.suite === 'string' && sp.suite.startsWith('/') ? sp.suite : '';
+  // Normalisé avant d'être recopié en champ caché : voir `cheminInterne`.
+  const destination = typeof sp.suite === 'string' ? cheminInterne(sp.suite) : '/';
+  const suite = destination === '/' ? '' : destination;
 
   const etat = await etatLien(jeton);
   const membre = etat.statut === 'inconnu' ? null : await membreParId(etat.membreId);

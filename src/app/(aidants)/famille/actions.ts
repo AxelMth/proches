@@ -256,12 +256,36 @@ export async function enregistrerMotDePasse(
   };
 }
 
-/** Revient au lien par courriel comme seul moyen d'entrer. */
-export async function supprimerMotDePasse(): Promise<void> {
+/**
+ * Revient au lien par courriel comme seul moyen d'entrer.
+ *
+ * **Le mot de passe actuel est exigé ici aussi**, et ce n'est pas une symétrie
+ * décorative : sans lui, l'exigence posée par `enregistrerMotDePasse` ne
+ * protégeait rien du tout. Il suffisait de supprimer d'abord — aucune preuve
+ * demandée — pour que le compte n'ait plus de mot de passe, et le formulaire de
+ * définition cessait alors de réclamer l'ancien. Deux clics depuis un appareil
+ * resté connecté, et le compte changeait de mains sans que personne n'ait eu à
+ * connaître le mot de passe existant.
+ */
+export async function supprimerMotDePasse(
+  _precedent: EtatMotDePasse,
+  donnees: FormData,
+): Promise<EtatMotDePasse> {
   const { membre, foyer } = await contexteAidant();
+
+  const existant = await empreinteMotDePasse(membre.email);
+  if (existant && !(await verifier(String(donnees.get('ancien') ?? ''), existant.empreinte))) {
+    return { statut: 'erreur', message: 'Le mot de passe actuel ne correspond pas.' };
+  }
+
   await retirerMotDePasse(membre.id);
   await noter(foyer.id, membre.id, 'a supprimé son mot de passe', null);
+
   revalidatePath('/famille');
+  return {
+    statut: 'ok',
+    message: 'Mot de passe supprimé. Vous entrez de nouveau par un lien reçu par courriel.',
+  };
 }
 
 export async function regenererLienVue(donnees: FormData): Promise<void> {
