@@ -7,7 +7,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { nouvelId } from './db';
-import { nomSur, refusLot, tailleMaxOctets } from './formats';
+import { nomSur, refusLot, tailleMaxOctets, typeMimeDe } from './formats';
 import {
   insererDocument,
   insererFichier,
@@ -156,13 +156,15 @@ async function poser(
       // foyers restent séparés si l'instance venait à en accueillir plusieurs.
       const cle = `documents/${cible.foyerId}/${nouvelId()}`;
 
-      await ecrire(cle, contenu, fichier.type);
+      const typeMime = typeMimeDe(fichier);
+
+      await ecrire(cle, contenu, typeMime);
       ecrites.push(cle);
 
       await insererFichier({
         documentId: cible.documentId,
         nomFichier: nomSur(fichier.name),
-        typeMime: fichier.type,
+        typeMime,
         taille: contenu.byteLength,
         cle,
         ordre: cible.ordreDepart + index,

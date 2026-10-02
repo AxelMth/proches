@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatTaille, formatTailleSup, nomSur, refusLot, refusPiece } from './formats';
+import {
+  formatTaille,
+  formatTailleSup,
+  nomSur,
+  refusLot,
+  refusPiece,
+  typeMimeDe,
+} from './formats';
 
 const MO = 1024 * 1024;
 const MAX = 25 * MO;
@@ -13,6 +20,22 @@ describe('refus d’une pièce', () => {
     expect(refusPiece(piece('scan.pdf', 5.6 * MO, 'application/pdf'), MAX)).toBeNull();
     expect(refusPiece(piece('photo.jpg', 2 * MO, 'image/jpeg'), MAX)).toBeNull();
     expect(refusPiece(piece('carte.heic', 3 * MO, 'image/heic'), MAX)).toBeNull();
+  });
+
+  it('accepte un CSV quel que soit le type annoncé par le navigateur', () => {
+    for (const type of ['text/csv', 'application/vnd.ms-excel', 'text/plain', '']) {
+      expect(refusPiece(piece('Releve.CSV', MO, type), MAX)).toBeNull();
+      expect(typeMimeDe(piece('Releve.CSV', MO, type))).toBe('text/csv');
+    }
+  });
+
+  it('ne fait pas passer un autre fichier pour un CSV', () => {
+    expect(refusPiece(piece('budget.xls', MO, 'application/vnd.ms-excel'), MAX)).toContain(
+      'non accepté',
+    );
+    expect(refusPiece(piece('notes.txt', MO, 'text/plain'), MAX)).toContain('non accepté');
+    expect(refusPiece(piece('piege.csv', MO, 'text/html'), MAX)).toContain('non accepté');
+    expect(typeMimeDe(piece('scan.csv', MO, 'application/pdf'))).toBe('application/pdf');
   });
 
   it('refuse un fichier vide', () => {
