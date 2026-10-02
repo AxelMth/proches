@@ -15,7 +15,30 @@ export const TYPES_ACCEPTES: Record<string, string> = {
   'image/webp': 'image WebP',
   'image/heic': 'photo HEIC',
   'image/heif': 'photo HEIF',
+  'text/csv': 'tableau CSV',
 };
+
+const TYPE_CSV = 'text/csv';
+const EXTENSION_CSV = '.csv';
+
+// Browsers take a CSV's type from the OS registry: Windows with Excel reports
+// `application/vnd.ms-excel`, some report nothing at all.
+const TYPES_DECLARES_CSV = new Set([
+  '',
+  TYPE_CSV,
+  'text/plain',
+  'text/x-csv',
+  'text/comma-separated-values',
+  'application/csv',
+  'application/x-csv',
+  'application/vnd.ms-excel',
+]);
+
+export function typeMimeDe(piece: Pick<PieceCandidate, 'name' | 'type'>): string {
+  const estCsv =
+    piece.name.toLowerCase().endsWith(EXTENSION_CSV) && TYPES_DECLARES_CSV.has(piece.type);
+  return estCsv ? TYPE_CSV : piece.type;
+}
 
 /**
  * SVG et HTML sont volontairement exclus : ce sont des documents actifs, servis
@@ -27,7 +50,7 @@ export function typeAccepte(typeMime: string): boolean {
 }
 
 /** Valeur de l'attribut `accept` d'un `<input type="file">`. */
-export const FORMATS_ACCEPTES = Object.keys(TYPES_ACCEPTES).join(',');
+export const FORMATS_ACCEPTES = [...Object.keys(TYPES_ACCEPTES), EXTENSION_CSV].join(',');
 
 /** « PDF, photo JPEG, image PNG… » */
 export function libellesFormats(): string {
@@ -129,7 +152,7 @@ export function refusPiece(piece: PieceCandidate, max: number): string | null {
     return entete;
   }
 
-  if (!typeAccepte(piece.type)) {
+  if (!typeAccepte(typeMimeDe(piece))) {
     return (
       `« ${piece.name} » est dans un format non accepté${piece.type ? ` (${piece.type})` : ''}. ` +
       `Formats possibles : ${libellesFormats()}.`

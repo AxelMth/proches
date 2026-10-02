@@ -56,9 +56,14 @@ export function Apercu({
   return <TuileTypee fichier={fichier} cadre={cadre} />;
 }
 
+const ETIQUETTES: Record<string, string> = {
+  'application/pdf': 'PDF',
+  'text/csv': 'CSV',
+};
+
 /** Ce qu'on montre quand il n'y a rien à peindre : le type et le nom. */
 function TuileTypee({ fichier, cadre }: { fichier: Fichier; cadre: string }) {
-  const etiquette = fichier.typeMime === 'application/pdf' ? 'PDF' : 'Fichier';
+  const etiquette = ETIQUETTES[fichier.typeMime] ?? 'Fichier';
 
   return (
     <div className={`${cadre} flex flex-col items-center justify-center gap-1 px-2`}>
