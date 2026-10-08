@@ -65,7 +65,7 @@ export function ChampFichiers({
       ) : (
         <p className="mt-1 text-sm text-doux">
           {aide ? `${aide} ` : ''}
-          PDF, photo ou CSV, {formatTaille(tailleMax)} par pièce, {formatTaille(TOTAL_MAX_OCTETS)} en
+          PDF, photo, CSV ou Excel, {formatTaille(tailleMax)} par pièce, {formatTaille(TOTAL_MAX_OCTETS)} en
           tout.
         </p>
       )}

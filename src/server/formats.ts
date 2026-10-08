@@ -8,6 +8,10 @@
  * dans le bundle.
  */
 
+const TYPE_CSV = 'text/csv';
+const TYPE_XLS = 'application/vnd.ms-excel';
+const TYPE_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export const TYPES_ACCEPTES: Record<string, string> = {
   'application/pdf': 'PDF',
   'image/jpeg': 'photo JPEG',
@@ -15,29 +19,49 @@ export const TYPES_ACCEPTES: Record<string, string> = {
   'image/webp': 'image WebP',
   'image/heic': 'photo HEIC',
   'image/heif': 'photo HEIF',
-  'text/csv': 'tableau CSV',
+  [TYPE_CSV]: 'tableau CSV',
+  [TYPE_XLS]: 'classeur Excel',
+  [TYPE_XLSX]: 'classeur Excel',
 };
 
-const TYPE_CSV = 'text/csv';
-const EXTENSION_CSV = '.csv';
-
-// Browsers take a CSV's type from the OS registry: Windows with Excel reports
-// `application/vnd.ms-excel`, some report nothing at all.
-const TYPES_DECLARES_CSV = new Set([
-  '',
-  TYPE_CSV,
-  'text/plain',
-  'text/x-csv',
-  'text/comma-separated-values',
-  'application/csv',
-  'application/x-csv',
-  'application/vnd.ms-excel',
-]);
+// Browsers take a file's type from the OS registry: Windows with Excel reports a
+// CSV as `application/vnd.ms-excel`, a machine without Office reports a
+// spreadsheet as `application/octet-stream` or nothing at all. The extension
+// decides, but only among the types a browser plausibly declares for it.
+const TYPES_PAR_EXTENSION: readonly { extension: string; type: string; declares: Set<string> }[] =
+  [
+    {
+      extension: '.csv',
+      type: TYPE_CSV,
+      declares: new Set([
+        '',
+        TYPE_CSV,
+        'text/plain',
+        'text/x-csv',
+        'text/comma-separated-values',
+        'application/csv',
+        'application/x-csv',
+        TYPE_XLS,
+      ]),
+    },
+    {
+      extension: '.xls',
+      type: TYPE_XLS,
+      declares: new Set(['', TYPE_XLS, 'application/octet-stream']),
+    },
+    {
+      extension: '.xlsx',
+      type: TYPE_XLSX,
+      declares: new Set(['', TYPE_XLSX, 'application/octet-stream']),
+    },
+  ];
 
 export function typeMimeDe(piece: Pick<PieceCandidate, 'name' | 'type'>): string {
-  const estCsv =
-    piece.name.toLowerCase().endsWith(EXTENSION_CSV) && TYPES_DECLARES_CSV.has(piece.type);
-  return estCsv ? TYPE_CSV : piece.type;
+  const nom = piece.name.toLowerCase();
+  const reconnu = TYPES_PAR_EXTENSION.find(
+    ({ extension, declares }) => nom.endsWith(extension) && declares.has(piece.type),
+  );
+  return reconnu?.type ?? piece.type;
 }
 
 /**
@@ -50,7 +74,10 @@ export function typeAccepte(typeMime: string): boolean {
 }
 
 /** Valeur de l'attribut `accept` d'un `<input type="file">`. */
-export const FORMATS_ACCEPTES = [...Object.keys(TYPES_ACCEPTES), EXTENSION_CSV].join(',');
+export const FORMATS_ACCEPTES = [
+  ...Object.keys(TYPES_ACCEPTES),
+  ...TYPES_PAR_EXTENSION.map(({ extension }) => extension),
+].join(',');
 
 /** « PDF, photo JPEG, image PNG… » */
 export function libellesFormats(): string {
