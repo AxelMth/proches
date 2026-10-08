@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  affichableEnLigne,
   formatTaille,
   formatTailleSup,
   nomSur,
@@ -10,6 +11,8 @@ import {
 
 const MO = 1024 * 1024;
 const MAX = 25 * MO;
+const XLS = 'application/vnd.ms-excel';
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 function piece(nom: string, taille: number, type: string) {
   return { name: nom, size: taille, type };
@@ -30,12 +33,36 @@ describe('refus d’une pièce', () => {
   });
 
   it('ne fait pas passer un autre fichier pour un CSV', () => {
-    expect(refusPiece(piece('budget.xls', MO, 'application/vnd.ms-excel'), MAX)).toContain(
-      'non accepté',
-    );
+    expect(typeMimeDe(piece('budget.xls', MO, XLS))).toBe(XLS);
     expect(refusPiece(piece('notes.txt', MO, 'text/plain'), MAX)).toContain('non accepté');
     expect(refusPiece(piece('piege.csv', MO, 'text/html'), MAX)).toContain('non accepté');
     expect(typeMimeDe(piece('scan.csv', MO, 'application/pdf'))).toBe('application/pdf');
+  });
+
+  it('accepte un classeur Excel quel que soit le type annoncé par le navigateur', () => {
+    for (const type of ['', 'application/octet-stream', XLS]) {
+      expect(refusPiece(piece('Budget.XLS', MO, type), MAX)).toBeNull();
+      expect(typeMimeDe(piece('Budget.XLS', MO, type))).toBe(XLS);
+    }
+    for (const type of ['', 'application/octet-stream', XLSX]) {
+      expect(refusPiece(piece('Budget.xlsx', MO, type), MAX)).toBeNull();
+      expect(typeMimeDe(piece('Budget.xlsx', MO, type))).toBe(XLSX);
+    }
+  });
+
+  it('ne fait pas passer un autre fichier pour un classeur Excel', () => {
+    expect(refusPiece(piece('macros.xlsm', MO, 'application/octet-stream'), MAX)).toContain(
+      'non accepté',
+    );
+    expect(refusPiece(piece('piege.xlsx', MO, 'text/html'), MAX)).toContain('non accepté');
+    expect(refusPiece(piece('outil.exe', MO, 'application/octet-stream'), MAX)).toContain(
+      'non accepté',
+    );
+  });
+
+  it('télécharge un classeur Excel plutôt que de l’afficher', () => {
+    expect(affichableEnLigne(XLS)).toBe(false);
+    expect(affichableEnLigne(XLSX)).toBe(false);
   });
 
   it('refuse un fichier vide', () => {

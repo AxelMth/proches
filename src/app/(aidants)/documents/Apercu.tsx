@@ -59,6 +59,8 @@ export function Apercu({
 const ETIQUETTES: Record<string, string> = {
   'application/pdf': 'PDF',
   'text/csv': 'CSV',
+  'application/vnd.ms-excel': 'Excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel',
 };
 
 /** Ce qu'on montre quand il n'y a rien à peindre : le type et le nom. */
